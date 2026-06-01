@@ -1,0 +1,21 @@
+# Local Jaeger for TraceGuard examples. LOCAL DEVELOPMENT ONLY.
+#
+# Jaeger v1 reached EOL 2025-12-31; v2 is the current line. We pin the v1
+# all-in-one image here purely because it is the simplest, well-documented,
+# known-good local demo — NOT a production recommendation. See docs/ROADMAP.md.
+#
+# Start:  docker compose -f examples/docker-compose.yml up -d
+# Stop:   docker compose -f examples/docker-compose.yml down
+# UI:     http://localhost:16686
+
+services:
+  jaeger:
+    image: jaegertracing/all-in-one:1.76.0
+    container_name: traceguard-jaeger
+    environment:
+      # Turn on the OTLP receiver so our OTLPSpanExporter can send spans in.
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"  # Jaeger web UI  (you open this in the browser)
+      - "4317:4317"    # OTLP gRPC      (our program sends spans here)
+      - "4318:4318"    # OTLP HTTP      (alternative OTLP port, unused for now)
