@@ -5,6 +5,57 @@ evidence behind it, and the consequences. Newest first.
 
 ---
 
+## ADR-002: Redaction targets `gen_ai.input.messages` / `gen_ai.output.messages`, which are JSON
+
+**Status**: Accepted
+**Context date**: Week 1, after running real OpenLLMetry + Anthropic end-to-end
+
+### Context
+
+Every attribute key in the spike and early hello examples (`gen_ai.prompt`,
+`gen_ai.completion`) was a hand-typed guess. We ran a real Claude call through
+OpenLLMetry and inspected the actual span in Jaeger to replace guesses with
+ground truth.
+
+### What we found (ground truth, verified in Jaeger)
+
+Running `traceloop-sdk==0.61.0` /
+`opentelemetry-instrumentation-anthropic==0.61.0`, a real
+`client.messages.create()` produced span `anthropic.chat` with:
+
+- **Prompt content** → `gen_ai.input.messages` (NOT `gen_ai.prompt`)
+- **Completion content** → `gen_ai.output.messages` (NOT `gen_ai.completion`)
+- Both values are **JSON strings**, not plain text:
+  ```json
+  [{"role": "user", "parts": [{"type": "text", "content": "Say hello..."}]}]
+  ```
+- Other keys present: `gen_ai.provider.name=anthropic`,
+  `gen_ai.request.model`, `gen_ai.usage.{input,output,total}_tokens`,
+  `gen_ai.response.id`, `gen_ai.operation.name=chat`. Scope:
+  `opentelemetry.instrumentation.anthropic`.
+
+### Decision / consequences for redaction (Week 3)
+
+1. **Target the new-semconv keys** `gen_ai.input.messages` /
+   `gen_ai.output.messages` as the primary PII-bearing attributes. Keep the
+   legacy `gen_ai.prompt` / `gen_ai.completion` as fallbacks (older
+   instrumentation versions / `use_legacy_attributes` mode may still emit
+   them — Traceloop.init exposes `use_legacy_attributes` / `use_attributes`).
+2. **PII lives inside JSON**, at `messages[].parts[].content`. Redaction must
+   parse the JSON, walk to each `content` string, redact, and re-serialize —
+   NOT just regex the whole attribute value blindly (though a regex pass over
+   the serialized string is a safe backstop). This is more involved than the
+   spike's plain-string redaction and is the key design input for Week 3.
+3. Spike/hello placeholder keys (`gen_ai.prompt`) are now known to be wrong
+   for current OpenLLMetry; do not treat them as the only target.
+
+### Evidence
+`examples/hello_openllmetry.py` + Jaeger trace for service
+`traceguard-openllmetry-demo`, inspected via the Jaeger HTTP API
+(`/api/traces?service=...`).
+
+---
+
 ## ADR-001: Implement redaction as a SpanExporter wrapper (not a SpanProcessor)
 
 **Status**: Accepted
