@@ -15,10 +15,13 @@ POSITIVES = {
         "eyJraWQiOiJrIn0.eyJyb2xlIjoiYSJ9.ZZZ999aaa",
     ],
     "us_phone": ["(212) 555-0173", "212-555-0173", "+1 212 555 0173"],
+    # NOTE: these are obvious dummy strings (all-X, all-0). Realistic-looking
+    # samples trigger GitHub secret-scanning false positives even when they're
+    # made up — see https://docs.github.com/en/code-security/secret-scanning.
     "google_api_key": [
-        "AIzaSyA1234567890abcdefghijklmnopqrstuv",
-        "AIzaBCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
-        "AIza00000000000000000000000000000000000",
+        "AIza" + "X" * 35,
+        "AIza" + "0" * 35,
+        "AIza" + "_" * 35,
     ],
 }
 
